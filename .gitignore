@@ -1,0 +1,11 @@
+/ExportData.Test/bin
+/ExportData.Test/obj
+
+/ExportOrass.BusinessLogic/bin
+/ExportOrass.BusinessLogic/obj
+
+/ExportOrass.DataAccess/bin
+/ExportOrass.DataAccess/obj
+
+/ExportOrass.WebApi/bin
+/ExportOrass.WebApi/obj
