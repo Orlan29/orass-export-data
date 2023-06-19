@@ -6,7 +6,7 @@ namespace ExportOrass.BusinessLogic.Interfaces
 {
     public interface IExportData
     {
-        public ExcelResult<User> ExportDataToCSV(CancellationToken cancellationToken);
+        public Task<ExcelResult<OrassDatatProject>> ExportDataToCSVAsync(string startDate, string endDate, CancellationToken cancellationToken);
         public Task<IEnumerable<OrassData>> GetOrassDatasAsync(string startedDate, string endedDate, CancellationToken cancellationToken);
     }
 }

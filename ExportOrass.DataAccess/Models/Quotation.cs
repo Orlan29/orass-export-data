@@ -34,7 +34,7 @@ namespace ExportOrass.DataAccess.Models
         [BsonElement("FiscalPower")]
         public uint FiscalPower { get; set; }
         [BsonElement("FreeCombination")]
-        public ProjectFreeCombinationRef FreeCombination { get; set; } = null!;
+        public ProjectFreeCombinationRef FreeCombination { get; set; }
     }
 
     [BsonIgnoreExtraElements]

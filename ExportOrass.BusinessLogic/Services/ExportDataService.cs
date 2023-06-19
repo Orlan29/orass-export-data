@@ -1,14 +1,18 @@
 ﻿using ExportOrass.BusinessLogic.Interfaces;
 using ExportOrass.DataAccess.Models;
 using Fingers10.ExcelExport.ActionResults;
+using Fingers10.ExcelExport.Attributes;
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
+using System.Text.Json.Serialization;
 
 namespace ExportOrass.BusinessLogic.Services
 {
     public class User
     {
+        [IncludeInReport]
         public int Id { get; set; }
+        [IncludeInReport]
         public string Username { get; set; } = string.Empty;
     }
 
@@ -32,17 +36,56 @@ namespace ExportOrass.BusinessLogic.Services
             _quotationsCollection = mongoDatabase.GetCollection<Quotation>("Quotation");
         }
 
-        public ExcelResult<User> ExportDataToCSV(CancellationToken cancellationToken)
+        public async Task<ExcelResult<OrassDatatProject>> ExportDataToCSVAsync(string startDate, string endDate, CancellationToken cancellationToken)
         {
-            List<User> users = new List<User>
-            {
-                new User { Id = 1, Username = "DoloresAbernathy" },
-                new User { Id = 2, Username = "MaeveMillay" },
-                new User { Id = 3, Username = "BernardLowe" },
-                new User { Id = 4, Username = "ManInBlack" }
-            };
+            IEnumerable<OrassData> datas = await GetOrassDatasAsync(startDate, endDate, cancellationToken);
+            List<OrassDatatProject> orassDatatProjects = new();
 
-            return new ExcelResult<User>(users, "sheet1", "test");
+            foreach (OrassData data in datas)
+            {
+                orassDatatProjects.Add(new OrassDatatProject
+                {
+                    Police = data.Contrat.PolicyNumber,
+                    Avenant = "A",
+                    Emission = data.Contrat.CreatedAt,
+                    DateCompte = data.Contrat.CreatedAt,
+                    Effet = data.Contrat.EffectDate,
+                    Expiration = data.Contrat.DueDate,
+                    Echeance = data.Contrat.DueDate,
+                    Duree = "A",
+                    Cat = data.Quotation.Vehicles.First().Data.Category,
+                    Mouvement = "A",
+                    Assure = data.Client.FirstName + " " + data.Client.LastName,
+                    Immat = data.Quotation.Vehicles.First().Data.Registration,
+                    Places = data.Quotation.Vehicles.First().Data.NumberOfSeats,
+                    PuissanceAd = data.Quotation.Vehicles.First().FiscalPower,
+                    Genre = data.Quotation.Vehicles.First().Data.Gender,
+                    DateImmat = data.Quotation.Vehicles.First().Data.FirstRegistration,
+                    Conducteur = data.Client.FirstName + " " + data.Client.LastName,
+                    DateNaissance = data.Client.BirthDate,
+                    NPermis = data.Client.DriverLicenseCategory,
+                    Van = data.Quotation.Vehicles.First().Data.MarketValue,
+                    Vv = data.Quotation.Vehicles.First().Data.MarketValue,
+                    Marque = data.Quotation.Vehicles.First().Data.Manufacturer,
+                    Barem = 1,
+                    Cie = 0,
+                    NomClient = data.Client.FirstName + " " + data.Client.LastName,
+                    Adresse = data.Client.Adress,
+                    Titre = data.Client.Civility,
+                    NClient = data.Client.SignatureId,
+                    TypeContrat = 1,
+                    Profession = data.Client.Occupation,
+                    Rc = data.Quotation.Vehicles.First().FreeCombination.ProductInfo.Code,
+                    TotalPn = 0,
+                    Prefix = "A",
+                    NAttestation = data.CertificateSetting.CertificatesInUse.First().Registration,
+                    CarteRose = "A",
+                    CodeInte = data.Intermediary.AdministrativeRegistration,
+                    NomIntermediaire = data.Intermediary.CorporateName
+                });
+            }
+
+            return new ExcelResult<OrassDatatProject>(orassDatatProjects, "sheet1", "Orass_Data");
         }
 
         public async Task<IEnumerable<OrassData>> GetOrassDatasAsync(string startDate, string endDate, CancellationToken cancellationToken)

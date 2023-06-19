@@ -15,18 +15,16 @@ namespace ExportOrass.WebApi.Controllers
             _exportData = exportData;
         }
 
-        // GET: api/<ExportDataController>
         [HttpGet]
         public async Task<IActionResult> Get(string startedDate,string endedDate, CancellationToken cancellationToken)
         {
             return Ok(await _exportData.GetOrassDatasAsync(startedDate, endedDate, cancellationToken));
         }
 
-        // GET api/<ExportDataController>/5
         [HttpGet("ExportData")]
-        public IActionResult Get(CancellationToken cancellationToken)
+        public async Task<IActionResult> ExportData(string startDate, string endDate, CancellationToken cancellationToken)
         {
-            return _exportData.ExportDataToCSV(cancellationToken);
+            return await _exportData.ExportDataToCSVAsync(startDate, endDate, cancellationToken);
         }
     }
 }
