@@ -1,10 +1,11 @@
 ﻿using ExportOrass.BusinessLogic.Interfaces;
 using ExportOrass.DataAccess.Models;
-using Fingers10.ExcelExport.ActionResults;
 using Fingers10.ExcelExport.Attributes;
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
-using System.Text.Json.Serialization;
+using NPOI.SS.UserModel;
+using NPOI.XSSF.UserModel;
+using System.Data;
 
 namespace ExportOrass.BusinessLogic.Services
 {
@@ -36,56 +37,136 @@ namespace ExportOrass.BusinessLogic.Services
             _quotationsCollection = mongoDatabase.GetCollection<Quotation>("Quotation");
         }
 
-        public async Task<ExcelResult<OrassDatatProject>> ExportDataToCSVAsync(string startDate, string endDate, CancellationToken cancellationToken)
+        public async Task<byte[]> ExportDataToCSVAsync(string startDate, string endDate, CancellationToken cancellationToken)
         {
             IEnumerable<OrassData> datas = await GetOrassDatasAsync(startDate, endDate, cancellationToken);
-            List<OrassDatatProject> orassDatatProjects = new();
+            IWorkbook workbook = new XSSFWorkbook();
 
-            foreach (OrassData data in datas)
+            var dataFormat = workbook.CreateDataFormat();
+            var dataStyle = workbook.CreateCellStyle();
+            dataStyle.DataFormat = dataFormat.GetFormat("dd/MM/yyyy HH:mm:ss");
+
+            ISheet sheet = workbook.CreateSheet("Sheet1");
+
+            int rowNumber = 0;
+            IRow row = sheet.CreateRow(rowNumber++);
+
+            InitSheetHeaders(row);
+
+            InitSheetBody(ref sheet, datas);
+
+            MemoryStream ms = new();
+            workbook.Write(ms, false);
+
+            byte[] bytes = ms.ToArray();
+            ms.Close();
+
+            return bytes;
+        }
+
+        private static ICell InitSheetHeaders(IRow row)
+        {
+            string[] sheetHeaders = { "POLICE", "AVENANT", "EMISSION", "Date Comp", "EFFET", "EXPIRATION", "ECHEANCE", "DUREE", "CAT", "MOUVEMENT", "ASSURE", "IMMAT", "PLACES", "PUISSANCE AD", "GENRE", "DATE IMMAT", "CONDUCTEUR", "DATE NAISSANCE", "N° PERMIS", "VAN", "VV", "MARQUE", "BAREM", "CIE", "NOM CLIENT", "ADRESSE", "TITRE", "N° CLIENT", "TYPE CONTRAT", "PROFESSION", "RC", "TOTALPN", "Prefixe", "N° ATTESTATION", "N° CARTE ROSE", "CODE INTE", "NOM INTERMEDIAIRE" };
+
+            ICell cell = row.CreateCell(0);
+            cell.SetCellValue(sheetHeaders[0]);
+
+            for (int i = 1; i < sheetHeaders.Length; i++)
             {
-                orassDatatProjects.Add(new OrassDatatProject
-                {
-                    Police = data.Contrat.PolicyNumber,
-                    Avenant = "A",
-                    Emission = data.Contrat.CreatedAt,
-                    DateCompte = data.Contrat.CreatedAt,
-                    Effet = data.Contrat.EffectDate,
-                    Expiration = data.Contrat.DueDate,
-                    Echeance = data.Contrat.DueDate,
-                    Duree = "A",
-                    Cat = data.Quotation.Vehicles.First().Data.Category,
-                    Mouvement = "A",
-                    Assure = data.Client.FirstName + " " + data.Client.LastName,
-                    Immat = data.Quotation.Vehicles.First().Data.Registration,
-                    Places = data.Quotation.Vehicles.First().Data.NumberOfSeats,
-                    PuissanceAd = data.Quotation.Vehicles.First().FiscalPower,
-                    Genre = data.Quotation.Vehicles.First().Data.Gender,
-                    DateImmat = data.Quotation.Vehicles.First().Data.FirstRegistration,
-                    Conducteur = data.Client.FirstName + " " + data.Client.LastName,
-                    DateNaissance = data.Client.BirthDate,
-                    NPermis = data.Client.DriverLicenseCategory,
-                    Van = data.Quotation.Vehicles.First().Data.MarketValue,
-                    Vv = data.Quotation.Vehicles.First().Data.MarketValue,
-                    Marque = data.Quotation.Vehicles.First().Data.Manufacturer,
-                    Barem = 1,
-                    Cie = 0,
-                    NomClient = data.Client.FirstName + " " + data.Client.LastName,
-                    Adresse = data.Client.Adress,
-                    Titre = data.Client.Civility,
-                    NClient = data.Client.SignatureId,
-                    TypeContrat = 1,
-                    Profession = data.Client.Occupation,
-                    Rc = data.Quotation.Vehicles.First().FreeCombination.ProductInfo.Code,
-                    TotalPn = 0,
-                    Prefix = "A",
-                    NAttestation = data.CertificateSetting.CertificatesInUse.First().Registration,
-                    CarteRose = "A",
-                    CodeInte = data.Intermediary.AdministrativeRegistration,
-                    NomIntermediaire = data.Intermediary.CorporateName
-                });
+                cell = row.CreateCell(i);
+                cell.SetCellValue(sheetHeaders[i]);
             }
 
-            return new ExcelResult<OrassDatatProject>(orassDatatProjects, "sheet1", "Orass_Data");
+            return cell;
+        }
+
+        private static void InitSheetBody(ref ISheet sheet, IEnumerable<OrassData> orassDatas)
+        {
+            int rowNumber = 1;
+
+            foreach (OrassData data in orassDatas)
+            {
+                var vehicles = data.Quotation.Vehicles;
+
+                if (vehicles != null && vehicles.Any())
+                {
+                    IRow row = sheet.CreateRow(rowNumber);
+                    ICell cell = row.CreateCell(0);
+                    cell.SetCellValue(data.Contrat.PolicyNumber);
+                    cell = row.CreateCell(1);
+                    cell.SetCellValue("");
+                    cell = row.CreateCell(2);
+                    cell.SetCellValue(data.Contrat.CreatedAt.ToString());
+                    cell = row.CreateCell(3);
+                    cell.SetCellValue(data.Contrat.CreatedAt.ToString());
+                    cell = row.CreateCell(4);
+                    cell.SetCellValue(data.Contrat.EffectDate.ToString());
+                    cell = row.CreateCell(5);
+                    cell.SetCellValue(data.Contrat.DueDate.ToString());
+                    cell = row.CreateCell(6);
+                    cell.SetCellValue(data.Contrat.DueDate.ToString());
+                    cell = row.CreateCell(7);
+                    cell.SetCellValue(vehicles?.FirstOrDefault()?.Data.Category.ToString());
+                    cell = row.CreateCell(8);
+                    cell.SetCellValue("");
+                    cell = row.CreateCell(9);
+                    cell.SetCellValue("");
+                    cell = row.CreateCell(10);
+                    cell.SetCellValue(data.Client.FirstName + " " + data.Client.LastName);
+                    cell = row.CreateCell(11);
+                    cell.SetCellValue(vehicles?.FirstOrDefault()?.Data.Registration);
+                    cell = row.CreateCell(12);
+                    cell.SetCellValue(vehicles?.FirstOrDefault()?.Data.NumberOfSeats.ToString());
+                    cell = row.CreateCell(13);
+                    cell.SetCellValue(vehicles?.FirstOrDefault()?.FiscalPower.ToString());
+                    cell = row.CreateCell(14);
+                    cell.SetCellValue(vehicles?.FirstOrDefault()?.Data.Gender);
+                    cell = row.CreateCell(15);
+                    cell.SetCellValue(vehicles?.FirstOrDefault()?.Data.FirstRegistration.ToString());
+                    cell = row.CreateCell(16);
+                    cell.SetCellValue(data.Client.FirstName + " " + data.Client.LastName);
+                    cell = row.CreateCell(17);
+                    cell.SetCellValue(data.Client.DriverLicenseCategory);
+                    cell = row.CreateCell(18);
+                    cell.SetCellValue(vehicles?.FirstOrDefault()?.Data.MarketValue.ToString());
+                    cell = row.CreateCell(19);
+                    cell.SetCellValue(vehicles?.FirstOrDefault()?.Data.MarketValue.ToString());
+                    cell = row.CreateCell(20);
+                    cell.SetCellValue(vehicles?.FirstOrDefault()?.Data.Manufacturer.ToString());
+                    cell = row.CreateCell(21);
+                    cell.SetCellValue(1);
+                    cell = row.CreateCell(22);
+                    cell.SetCellValue(0);
+                    cell = row.CreateCell(23);
+                    cell.SetCellValue(data.Client.FirstName + " " + data.Client.LastName);
+                    cell = row.CreateCell(24);
+                    cell.SetCellValue(data.Client.Adress);
+                    cell = row.CreateCell(25);
+                    cell.SetCellValue(data.Client.Civility);
+                    cell = row.CreateCell(26);
+                    cell.SetCellValue(data.Client.SignatureId);
+                    cell = row.CreateCell(27);
+                    cell.SetCellValue(1);
+                    cell = row.CreateCell(28);
+                    cell.SetCellValue(data.Client.Occupation);
+                    cell = row.CreateCell(29);
+                    cell.SetCellValue(vehicles?.FirstOrDefault()?.FreeCombination?.ProductInfo?.Code);
+                    cell = row.CreateCell(30);
+                    cell.SetCellValue(0);
+                    cell = row.CreateCell(31);
+                    cell.SetCellValue("");
+                    cell = row.CreateCell(32);
+                    cell.SetCellValue(data.CertificateSetting.CertificatesInUse.FirstOrDefault()?.Registration);
+                    cell = row.CreateCell(33);
+                    cell.SetCellValue("");
+                    cell = row.CreateCell(34);
+                    cell.SetCellValue(data.Intermediary.AdministrativeRegistration);
+                    cell = row.CreateCell(35);
+                    cell.SetCellValue(data.Intermediary.CorporateName);
+
+                    rowNumber++;
+                }
+            }
         }
 
         public async Task<IEnumerable<OrassData>> GetOrassDatasAsync(string startDate, string endDate, CancellationToken cancellationToken)

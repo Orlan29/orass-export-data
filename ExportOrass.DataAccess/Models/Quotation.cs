@@ -19,7 +19,7 @@ namespace ExportOrass.DataAccess.Models
         [BsonElement("EffectDate")]
         public DateTime EffectDate { get; set; }
         [BsonElement("Vehicles")]
-        public IEnumerable<ProjectVehicleRef> Vehicles { get; set; } = null!;
+        public IEnumerable<ProjectVehicleRef>? Vehicles { get; set; } = null!;
         [BsonElement("Step")]
         public uint Step { get; set; }
         [BsonElement("OperationType")]
@@ -34,7 +34,7 @@ namespace ExportOrass.DataAccess.Models
         [BsonElement("FiscalPower")]
         public uint FiscalPower { get; set; }
         [BsonElement("FreeCombination")]
-        public ProjectFreeCombinationRef FreeCombination { get; set; }
+        public ProjectFreeCombinationRef? FreeCombination { get; set; } = null!;
     }
 
     [BsonIgnoreExtraElements]
@@ -57,7 +57,7 @@ namespace ExportOrass.DataAccess.Models
         [BsonElement("Registration")]
         public string Registration { get; set; } = string.Empty;
         [BsonElement("Category")]
-        public uint Category { get; set; }
+        public uint? Category { get; set; }
         [BsonElement("NumberOfSeats")]
         public uint NumberOfSeats { get; set; }
         [BsonElement("Gender")]
