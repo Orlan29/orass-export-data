@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using MongoDB.Driver;
 using NPOI.SS.UserModel;
 using NPOI.XSSF.UserModel;
+using System;
 using System.Data;
 
 namespace ExportOrass.BusinessLogic.Services
@@ -44,7 +45,7 @@ namespace ExportOrass.BusinessLogic.Services
 
             var dataFormat = workbook.CreateDataFormat();
             var dataStyle = workbook.CreateCellStyle();
-            dataStyle.DataFormat = dataFormat.GetFormat("dd/MM/yyyy HH:mm:ss");
+            dataStyle.DataFormat = dataFormat.GetFormat("dd/MM/yyyy");
 
             ISheet sheet = workbook.CreateSheet("Sheet1");
 
@@ -66,7 +67,8 @@ namespace ExportOrass.BusinessLogic.Services
 
         private static ICell InitSheetHeaders(IRow row)
         {
-            string[] sheetHeaders = { "POLICE", "AVENANT", "EMISSION", "Date Comp", "EFFET", "EXPIRATION", "ECHEANCE", "DUREE", "CAT", "MOUVEMENT", "ASSURE", "IMMAT", "PLACES", "PUISSANCE AD", "GENRE", "DATE IMMAT", "CONDUCTEUR", "DATE NAISSANCE", "N° PERMIS", "VAN", "VV", "MARQUE", "BAREM", "CIE", "NOM CLIENT", "ADRESSE", "TITRE", "N° CLIENT", "TYPE CONTRAT", "PROFESSION", "RC", "TOTALPN", "Prefixe", "N° ATTESTATION", "N° CARTE ROSE", "CODE INTE", "NOM INTERMEDIAIRE" };
+            string[] sheetHeaders = { "POLICE", "AVENANT", "EMISSION", "Date Comp", "EFFET", "EXPIRATION", "ECHEANCE", "DUREE", "CAT", "MOUVEMENT", 
+                "ASSURE", "IMMAT", "PLACES", "PUISSANCE AD", "GENRE", "DATE IMMAT", "CONDUCTEUR", "DATE NAISSANCE", "N° PERMIS", "VAN", "VV", "MARQUE", "BAREM", "CIE", "NOM CLIENT", "ADRESSE", "TITRE", "N° CLIENT", "TYPE CONTRAT", "PROFESSION", "RC", "TOTALPN", "Prefixe", "N° ATTESTATION", "N° CARTE ROSE", "CODE INTE", "NOM INTERMEDIAIRE" };
 
             ICell cell = row.CreateCell(0);
             cell.SetCellValue(sheetHeaders[0]);
@@ -96,19 +98,19 @@ namespace ExportOrass.BusinessLogic.Services
                     cell = row.CreateCell(1);
                     cell.SetCellValue("");
                     cell = row.CreateCell(2);
-                    cell.SetCellValue(data.Contrat.CreatedAt.ToString());
+                    cell.SetCellValue(data.Contrat.CreatedAt.ToShortDateString());
                     cell = row.CreateCell(3);
-                    cell.SetCellValue(data.Contrat.CreatedAt.ToString());
+                    cell.SetCellValue(data.Contrat.CreatedAt.ToShortDateString());
                     cell = row.CreateCell(4);
-                    cell.SetCellValue(data.Contrat.EffectDate.ToString());
+                    cell.SetCellValue(data.Contrat.EffectDate.ToShortDateString());
                     cell = row.CreateCell(5);
-                    cell.SetCellValue(data.Contrat.DueDate.ToString());
+                    cell.SetCellValue(data.Contrat.DueDate.ToShortDateString());
                     cell = row.CreateCell(6);
-                    cell.SetCellValue(data.Contrat.DueDate.ToString());
+                    cell.SetCellValue(data.Contrat.DueDate.ToShortDateString());
                     cell = row.CreateCell(7);
-                    cell.SetCellValue(vehicles?.FirstOrDefault()?.Data.Category.ToString());
+                    cell.SetCellValue((data.Contrat.DueDate - data.Contrat.EffectDate).Days);
                     cell = row.CreateCell(8);
-                    cell.SetCellValue("");
+                    cell.SetCellValue(vehicles?.FirstOrDefault()?.Data.Category.ToString());
                     cell = row.CreateCell(9);
                     cell.SetCellValue("");
                     cell = row.CreateCell(10);
@@ -122,46 +124,48 @@ namespace ExportOrass.BusinessLogic.Services
                     cell = row.CreateCell(14);
                     cell.SetCellValue(vehicles?.FirstOrDefault()?.Data.Gender);
                     cell = row.CreateCell(15);
-                    cell.SetCellValue(vehicles?.FirstOrDefault()?.Data.FirstRegistration.ToString());
+                    cell.SetCellValue(vehicles?.FirstOrDefault()?.Data.FirstRegistration.ToShortDateString());
                     cell = row.CreateCell(16);
                     cell.SetCellValue(data.Client.FirstName + " " + data.Client.LastName);
                     cell = row.CreateCell(17);
-                    cell.SetCellValue(data.Client.DriverLicenseCategory);
+                    cell.SetCellValue(data.Client.BirthDate.ToShortDateString());
                     cell = row.CreateCell(18);
-                    cell.SetCellValue(vehicles?.FirstOrDefault()?.Data.MarketValue.ToString());
+                    cell.SetCellValue(data.Client.DriverLicenseCategory);
                     cell = row.CreateCell(19);
                     cell.SetCellValue(vehicles?.FirstOrDefault()?.Data.MarketValue.ToString());
                     cell = row.CreateCell(20);
-                    cell.SetCellValue(vehicles?.FirstOrDefault()?.Data.Manufacturer.ToString());
+                    cell.SetCellValue(vehicles?.FirstOrDefault()?.Data.MarketValue.ToString());
                     cell = row.CreateCell(21);
-                    cell.SetCellValue(1);
+                    cell.SetCellValue(vehicles?.FirstOrDefault()?.Data.Manufacturer.ToString());
                     cell = row.CreateCell(22);
-                    cell.SetCellValue(0);
-                    cell = row.CreateCell(23);
-                    cell.SetCellValue(data.Client.FirstName + " " + data.Client.LastName);
-                    cell = row.CreateCell(24);
-                    cell.SetCellValue(data.Client.Adress);
-                    cell = row.CreateCell(25);
-                    cell.SetCellValue(data.Client.Civility);
-                    cell = row.CreateCell(26);
-                    cell.SetCellValue(data.Client.SignatureId);
-                    cell = row.CreateCell(27);
                     cell.SetCellValue(1);
-                    cell = row.CreateCell(28);
-                    cell.SetCellValue(data.Client.Occupation);
-                    cell = row.CreateCell(29);
-                    cell.SetCellValue(vehicles?.FirstOrDefault()?.FreeCombination?.ProductInfo?.Code);
-                    cell = row.CreateCell(30);
+                    cell = row.CreateCell(23);
                     cell.SetCellValue(0);
+                    cell = row.CreateCell(24);
+                    cell.SetCellValue(data.Client.FirstName + " " + data.Client.LastName);
+                    cell = row.CreateCell(25);
+                    cell.SetCellValue(data.Client.Adress);
+                    cell = row.CreateCell(26);
+                    cell.SetCellValue(data.Client.Civility);
+                    cell = row.CreateCell(27);
+                    cell.SetCellValue(data.Client.SignatureId);
+                    cell = row.CreateCell(28);
+                    cell.SetCellValue(1);
+                    cell = row.CreateCell(29);
+                    cell.SetCellValue(data.Client.Occupation);
+                    cell = row.CreateCell(30);
+                    cell.SetCellValue(vehicles?.FirstOrDefault()?.FreeCombination?.ProductInfo?.Code);
                     cell = row.CreateCell(31);
-                    cell.SetCellValue("");
+                    cell.SetCellValue(0);
                     cell = row.CreateCell(32);
-                    cell.SetCellValue(data.CertificateSetting.CertificatesInUse.FirstOrDefault()?.Registration);
-                    cell = row.CreateCell(33);
                     cell.SetCellValue("");
+                    cell = row.CreateCell(33);
+                    cell.SetCellValue(data.CertificateSetting.CertificatesInUse.FirstOrDefault()?.Registration);
                     cell = row.CreateCell(34);
-                    cell.SetCellValue(data.Intermediary.AdministrativeRegistration);
+                    cell.SetCellValue("");
                     cell = row.CreateCell(35);
+                    cell.SetCellValue(data.Intermediary.AdministrativeRegistration);
+                    cell = row.CreateCell(36);
                     cell.SetCellValue(data.Intermediary.CorporateName);
 
                     rowNumber++;
