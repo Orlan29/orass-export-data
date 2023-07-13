@@ -10,63 +10,68 @@ namespace ExportOrass.DataAccess.Models
         [BsonId]
         [BsonRepresentation(BsonType.ObjectId)]
         public string Id { get; set; } = string.Empty;
-        [BsonElement("IntermediaryId")]
         [BsonRepresentation(BsonType.ObjectId)]
         public string IntermediaryId { get; set; } = string.Empty;
-        [BsonElement("PrincipalInsuredId")]
         [BsonRepresentation(BsonType.ObjectId)]
         public string PrincipalInsuredId { get; set; } = string.Empty;
-        [BsonElement("EffectDate")]
         public DateTime EffectDate { get; set; }
-        [BsonElement("Vehicles")]
-        public IEnumerable<ProjectVehicleRef>? Vehicles { get; set; } = null!;
-        [BsonElement("Step")]
+        public IEnumerable<VehicleRef>? Vehicles { get; set; } = null!;
         public int Step { get; set; }
-        [BsonElement("OperationType")]
         public int OperationType { get; set; }
+        public IEnumerable<int> Periods { get; set; } = null!;
     }
 
     [BsonIgnoreExtraElements]
-    public class ProjectVehicleRef
+    public class VehicleRef
     {
-        [BsonElement("Data")]
-        public ProjectDataRef Data { get; set; } = null!;
-        [BsonElement("FiscalPower")]
-        public int FiscalPower { get; set; }
-        [BsonElement("FreeCombination")]
-        public ProjectFreeCombinationRef? FreeCombination { get; set; } = null!;
+        public DataRef Data { get; set; } = null!;
+        public ProductRef? Product { get; set; } = null!;
+        public FreeCombinationRef? FreeCombination { get; set; } = null!;
     }
 
     [BsonIgnoreExtraElements]
-    public class ProjectProductInfoRef
+    public class DataRef
     {
-        [BsonElement("Code")]
-        public string Code { get; set; } = string.Empty;
-    }
-
-    [BsonIgnoreExtraElements]
-    public class ProjectFreeCombinationRef
-    {
-        [BsonElement("ProductInfo")]
-        public ProjectProductInfoRef ProductInfo { get; set; } = null!;
-    }
-
-    [BsonIgnoreExtraElements]
-    public class ProjectDataRef
-    {
-        [BsonElement("Registration")]
         public string Registration { get; set; } = string.Empty;
-        [BsonElement("Category")]
         public int? Category { get; set; }
-        [BsonElement("NumberOfSeats")]
+        public int FiscalPower { get; set; }
         public int NumberOfSeats { get; set; }
-        [BsonElement("Gender")]
         public string Gender { get; set; } = string.Empty;
-        [BsonElement("FirstRegistration")]
         public DateTime FirstRegistration { get; set; }
-        [BsonElement("MarketValue")]
         public double MarketValue { get; set; }
-        [BsonElement("Manufacturer")]
         public string Manufacturer { get; set; } = string.Empty;
+    }
+
+    [BsonIgnoreExtraElements]
+    public class ProductRef
+    {
+        public IEnumerable<ProductsGuaranteesRef> ProductsGuarantees { get; set; } = null!;
+    }
+
+    [BsonIgnoreExtraElements]
+    public class FreeCombinationRef
+    {
+        public ProductInfoRef ProductInfo { get; set; } = null!;
+    }
+
+    [BsonIgnoreExtraElements]
+    public class ProductInfoRef
+    {
+        public IEnumerable<ProductsGuaranteesRef> ProductsGuarantees { get; set; } = null!;
+    }
+
+    [BsonIgnoreExtraElements]
+    public class ProductsGuaranteesRef
+    {
+        public string Title { get; set; } = string.Empty;
+        [BsonElement("IssuedPrice")]
+        public IEnumerable<IssuedPriceRef> IssuedPrices { get; set; } = null!;
+    }
+
+    [BsonIgnoreExtraElements]
+    public class IssuedPriceRef
+    {
+        public int NbMonths { get; set; }
+        public decimal Price { get; set; }
     }
 }

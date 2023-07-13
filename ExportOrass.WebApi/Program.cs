@@ -1,11 +1,12 @@
 using ExportOrass.BusinessLogic.Interfaces;
 using ExportOrass.BusinessLogic.Services;
 using ExportOrass.DataAccess.Models;
+using InfiSoftware.Common.DataAccess.SpreadsheetGeneration;
+using InfiSoftware.Common.DataAccess.SpreadsheetGeneration.Excel;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
@@ -14,7 +15,8 @@ builder.Services.AddSwaggerGen();
 builder.Services.Configure<ExportOrassDatabaseSettings>(
     builder.Configuration.GetSection("ExportOrassDatabase"));
 
-builder.Services.AddSingleton<IExportData, ExportDataService>();
+builder.Services.AddScoped<IExportData, ExportDataService>();
+builder.Services.AddScoped<ISpreadsheetGeneration, ExcelGeneration>();
 
 var app = builder.Build();
 

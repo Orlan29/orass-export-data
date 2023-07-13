@@ -1,23 +1,13 @@
 ﻿using ExportOrass.BusinessLogic.Interfaces;
 using ExportOrass.DataAccess.Models;
-using Fingers10.ExcelExport.Attributes;
+using InfiSoftware.Common.DataAccess.SpreadsheetGeneration;
+using InfiSoftware.Common.DataAccess.SpreadsheetGeneration.Excel;
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
-using NPOI.SS.UserModel;
-using NPOI.XSSF.UserModel;
-using System;
 using System.Data;
 
 namespace ExportOrass.BusinessLogic.Services
 {
-    public class User
-    {
-        [IncludeInReport]
-        public int Id { get; set; }
-        [IncludeInReport]
-        public string Username { get; set; } = string.Empty;
-    }
-
     public class ExportDataService : IExportData
     {
         private readonly IMongoCollection<Client> _clientsCollection;
@@ -25,8 +15,9 @@ namespace ExportOrass.BusinessLogic.Services
         private readonly IMongoCollection<CertificateSetting> _certificateSettingsCollection;
         private readonly IMongoCollection<Intermediary> _intermediariesCollection;
         private readonly IMongoCollection<Quotation> _quotationsCollection;
+        private readonly ISpreadsheetGeneration _excelGeneration;
 
-        public ExportDataService(IOptions<ExportOrassDatabaseSettings> exportOrassDatabaseSettings)
+        public ExportDataService(IOptions<ExportOrassDatabaseSettings> exportOrassDatabaseSettings, ISpreadsheetGeneration excelGeneration)
         {
             var mongoClient = new MongoClient(exportOrassDatabaseSettings.Value.ConnectionString);
             var mongoDatabase = mongoClient.GetDatabase(exportOrassDatabaseSettings.Value.DatabaseName);
@@ -36,141 +27,77 @@ namespace ExportOrass.BusinessLogic.Services
             _certificateSettingsCollection = mongoDatabase.GetCollection<CertificateSetting>("CertificateSettings");
             _intermediariesCollection = mongoDatabase.GetCollection<Intermediary>("Intermediary");
             _quotationsCollection = mongoDatabase.GetCollection<Quotation>("Quotation");
+            _excelGeneration = excelGeneration;
         }
 
-        public async Task<byte[]> ExportDataToCSVAsync(string startDate, string endDate, CancellationToken cancellationToken)
+
+        public async Task<byte[]> ExportOrassDataAsExcel(string startDate, string endDate, CancellationToken cancellationToken)
         {
-            IEnumerable<OrassData> datas = await GetOrassDatasAsync(startDate, endDate, cancellationToken);
-            IWorkbook workbook = new XSSFWorkbook();
+            IEnumerable<OrassData> orassDatas = await GetOrassDatasAsync(startDate, endDate, cancellationToken);
 
-            var dataFormat = workbook.CreateDataFormat();
-            var dataStyle = workbook.CreateCellStyle();
-            dataStyle.DataFormat = dataFormat.GetFormat("dd/MM/yyyy");
+            using var excel = new ExcelGeneration("POLICE", "AVENANT", "EMISSION", "Date Comp", "EFFET", "EXPIRATION", "ECHEANCE", "DUREE", "CAT", "MOUVEMENT",
+                "ASSURE", "IMMAT", "PLACES", "PUISSANCE AD", "GENRE", "DATE IMMAT", "CONDUCTEUR", "DATE NAISSANCE", "N° PERMIS", "VAN", "VV", "MARQUE", "BAREM",
+                "CIE", "NOM CLIENT", "ADRESSE", "TITRE", "N° CLIENT", "TYPE CONTRAT", "PROFESSION", "RC", "TOTALPN", "Prefixe", "N° ATTESTATION", "N° CARTE ROSE", "CODE INTE", "NOM INTERMEDIAIRE");
 
-            ISheet sheet = workbook.CreateSheet("Sheet1");
-
-            int rowNumber = 0;
-            IRow row = sheet.CreateRow(rowNumber++);
-
-            InitSheetHeaders(row);
-
-            InitSheetBody(ref sheet, datas);
-
-            MemoryStream ms = new();
-            workbook.Write(ms, false);
-
-            byte[] bytes = ms.ToArray();
-            ms.Close();
-
-            return bytes;
-        }
-
-        private static ICell InitSheetHeaders(IRow row)
-        {
-            string[] sheetHeaders = { "POLICE", "AVENANT", "EMISSION", "Date Comp", "EFFET", "EXPIRATION", "ECHEANCE", "DUREE", "CAT", "MOUVEMENT", 
-                "ASSURE", "IMMAT", "PLACES", "PUISSANCE AD", "GENRE", "DATE IMMAT", "CONDUCTEUR", "DATE NAISSANCE", "N° PERMIS", "VAN", "VV", "MARQUE", "BAREM", "CIE", "NOM CLIENT", "ADRESSE", "TITRE", "N° CLIENT", "TYPE CONTRAT", "PROFESSION", "RC", "TOTALPN", "Prefixe", "N° ATTESTATION", "N° CARTE ROSE", "CODE INTE", "NOM INTERMEDIAIRE" };
-
-            ICell cell = row.CreateCell(0);
-            cell.SetCellValue(sheetHeaders[0]);
-
-            for (int i = 1; i < sheetHeaders.Length; i++)
-            {
-                cell = row.CreateCell(i);
-                cell.SetCellValue(sheetHeaders[i]);
-            }
-
-            return cell;
-        }
-
-        private static void InitSheetBody(ref ISheet sheet, IEnumerable<OrassData> orassDatas)
-        {
-            int rowNumber = 1;
-
-            foreach (OrassData data in orassDatas)
+            foreach (var data in orassDatas)
             {
                 var vehicles = data.Quotation.Vehicles;
+                string operationType = data.Quotation.OperationType == 0 ? "Emission" : "Renouvellement";
+                decimal totalPrice = 0;
+
+                ProductRef? product = data.Quotation.Vehicles?.Where(x => x.Product != null).Select(x => x.Product).FirstOrDefault();
+                FreeCombinationRef? freeCombination = data.Quotation.Vehicles?.Where(x => x.FreeCombination != null).Select(x => x.FreeCombination).FirstOrDefault();
+                var productsGuarantees = product?.ProductsGuarantees ?? freeCombination?.ProductInfo?.ProductsGuarantees;
+
+                if (productsGuarantees != null)
+                    totalPrice = productsGuarantees
+                       .SelectMany(x => x.IssuedPrices)
+                       .Where(x => x.NbMonths == data.Quotation.Periods.FirstOrDefault())
+                       .Sum(x => x.Price);
 
                 if (vehicles != null && vehicles.Any())
-                {
-                    IRow row = sheet.CreateRow(rowNumber);
-                    ICell cell = row.CreateCell(0);
-                    cell.SetCellValue(data.Contrat.PolicyNumber);
-                    cell = row.CreateCell(1);
-                    cell.SetCellValue("");
-                    cell = row.CreateCell(2);
-                    cell.SetCellValue(data.Contrat.CreatedAt.ToShortDateString());
-                    cell = row.CreateCell(3);
-                    cell.SetCellValue(data.Contrat.CreatedAt.ToShortDateString());
-                    cell = row.CreateCell(4);
-                    cell.SetCellValue(data.Contrat.EffectDate.ToShortDateString());
-                    cell = row.CreateCell(5);
-                    cell.SetCellValue(data.Contrat.DueDate.ToShortDateString());
-                    cell = row.CreateCell(6);
-                    cell.SetCellValue(data.Contrat.DueDate.ToShortDateString());
-                    cell = row.CreateCell(7);
-                    cell.SetCellValue((data.Contrat.DueDate - data.Contrat.EffectDate).Days);
-                    cell = row.CreateCell(8);
-                    cell.SetCellValue(vehicles?.FirstOrDefault()?.Data.Category.ToString());
-                    cell = row.CreateCell(9);
-                    cell.SetCellValue("");
-                    cell = row.CreateCell(10);
-                    cell.SetCellValue(data.Client.FirstName + " " + data.Client.LastName);
-                    cell = row.CreateCell(11);
-                    cell.SetCellValue(vehicles?.FirstOrDefault()?.Data.Registration);
-                    cell = row.CreateCell(12);
-                    cell.SetCellValue(vehicles?.FirstOrDefault()?.Data.NumberOfSeats.ToString());
-                    cell = row.CreateCell(13);
-                    cell.SetCellValue(vehicles?.FirstOrDefault()?.FiscalPower.ToString());
-                    cell = row.CreateCell(14);
-                    cell.SetCellValue(vehicles?.FirstOrDefault()?.Data.Gender);
-                    cell = row.CreateCell(15);
-                    cell.SetCellValue(vehicles?.FirstOrDefault()?.Data.FirstRegistration.ToShortDateString());
-                    cell = row.CreateCell(16);
-                    cell.SetCellValue(data.Client.FirstName + " " + data.Client.LastName);
-                    cell = row.CreateCell(17);
-                    cell.SetCellValue(data.Client.BirthDate.ToShortDateString());
-                    cell = row.CreateCell(18);
-                    cell.SetCellValue(data.Client.DriverLicenseCategory);
-                    cell = row.CreateCell(19);
-                    cell.SetCellValue(vehicles?.FirstOrDefault()?.Data.MarketValue.ToString());
-                    cell = row.CreateCell(20);
-                    cell.SetCellValue(vehicles?.FirstOrDefault()?.Data.MarketValue.ToString());
-                    cell = row.CreateCell(21);
-                    cell.SetCellValue(vehicles?.FirstOrDefault()?.Data.Manufacturer.ToString());
-                    cell = row.CreateCell(22);
-                    cell.SetCellValue(1);
-                    cell = row.CreateCell(23);
-                    cell.SetCellValue(0);
-                    cell = row.CreateCell(24);
-                    cell.SetCellValue(data.Client.FirstName + " " + data.Client.LastName);
-                    cell = row.CreateCell(25);
-                    cell.SetCellValue(data.Client.Adress);
-                    cell = row.CreateCell(26);
-                    cell.SetCellValue(data.Client.Civility);
-                    cell = row.CreateCell(27);
-                    cell.SetCellValue(data.Client.SignatureId);
-                    cell = row.CreateCell(28);
-                    cell.SetCellValue(1);
-                    cell = row.CreateCell(29);
-                    cell.SetCellValue(data.Client.Occupation);
-                    cell = row.CreateCell(30);
-                    cell.SetCellValue(vehicles?.FirstOrDefault()?.FreeCombination?.ProductInfo?.Code);
-                    cell = row.CreateCell(31);
-                    cell.SetCellValue(0);
-                    cell = row.CreateCell(32);
-                    cell.SetCellValue("");
-                    cell = row.CreateCell(33);
-                    cell.SetCellValue(data.CertificateSetting.CertificatesInUse.FirstOrDefault()?.Registration);
-                    cell = row.CreateCell(34);
-                    cell.SetCellValue("");
-                    cell = row.CreateCell(35);
-                    cell.SetCellValue(data.Intermediary.AdministrativeRegistration);
-                    cell = row.CreateCell(36);
-                    cell.SetCellValue(data.Intermediary.CorporateName);
-
-                    rowNumber++;
+                 {
+                    excel.QuickFillRow(
+                        data.Contrat.PolicyNumber,
+                        $"{data.Contrat.ContractDate:dd/MM/yyyy}",
+                        $"{data.Contrat.ContractDate:dd/MM/yyyy}",
+                        $"{data.Contrat.EffectDate:dd/MM/yyyy}",
+                        $"{data.Contrat.DueDate:dd/MM/yyyy}",
+                        $"{data.Contrat.DueDate:dd/MM/yyyy}",
+                        $"{(data.Contrat.DueDate - data.Contrat.EffectDate).ToString():dd/MM/yyyy}",
+                        vehicles?.FirstOrDefault()?.Data?.Category,
+                        operationType,
+                        data.Client.FirstName + " " + data.Client.LastName,
+                        vehicles?.FirstOrDefault()?.Data?.Registration,
+                        vehicles?.FirstOrDefault()?.Data?.NumberOfSeats,
+                        vehicles?.FirstOrDefault()?.Data?.FiscalPower,
+                        vehicles?.FirstOrDefault()?.Data?.Gender,
+                        vehicles?.FirstOrDefault()?.Data?.FirstRegistration,
+                        data.Client.FirstName + " " + data.Client.LastName,
+                        $"{data.Client.BirthDate:dd/MM/yyyy}",
+                        data.Client.DriverLicenseCategory,
+                        vehicles?.FirstOrDefault()?.Data?.MarketValue,
+                        vehicles?.FirstOrDefault()?.Data?.MarketValue,
+                        vehicles?.FirstOrDefault()?.Data?.Manufacturer,
+                        1,
+                        0,
+                        data.Client.FirstName + " " + data.Client.LastName,
+                        data.Client.Adress,
+                        data.Client.Civility,
+                        data.Client.SignatureId,
+                        1,
+                        data.Client.Occupation,
+                        vehicles?.FirstOrDefault()?.FreeCombination?.ProductInfo?.ProductsGuarantees?.FirstOrDefault()?.Title,
+                        (double)totalPrice,
+                        "",
+                        data.CertificateSetting.CertificatesInUse.FirstOrDefault()?.Registration,
+                        "",
+                        data.Intermediary.AdministrativeRegistration,
+                        data.Intermediary.CorporateName);
                 }
             }
+
+            return excel.SaveToBytes();
         }
 
         public async Task<IEnumerable<OrassData>> GetOrassDatasAsync(string startDate, string endDate, CancellationToken cancellationToken)

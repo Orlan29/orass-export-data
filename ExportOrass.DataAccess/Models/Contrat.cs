@@ -14,8 +14,8 @@ namespace ExportOrass.DataAccess.Models
         public string ClientId { get; set; } = string.Empty;
         [BsonElement("PolicyNumber")]
         public string PolicyNumber { get; set; } = string.Empty;
-        [BsonElement("CreatedAt")]
-        public DateTime CreatedAt { get; set; }
+        [BsonElement("ContractDate")]
+        public DateTime ContractDate { get; set; }
         [BsonElement("EffectDate")]
         public DateTime EffectDate { get; set; }
         [BsonElement("DueDate")]

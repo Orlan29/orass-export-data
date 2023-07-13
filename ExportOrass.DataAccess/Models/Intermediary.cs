@@ -12,6 +12,6 @@ namespace ExportOrass.DataAccess.Models
         [BsonElement("CorporateName")]
         public string CorporateName { get; set; } = string.Empty;
         [BsonElement("AdministrativeRegistration")]
-        public string AdministrativeRegistration { get; set; } = string.Empty;
+        public int AdministrativeRegistration { get; set; }
     }
 }

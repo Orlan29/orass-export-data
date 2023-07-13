@@ -24,7 +24,7 @@ namespace ExportOrass.WebApi.Controllers
         [HttpGet("ExportData")]
         public async Task<IActionResult> ExportData(string startDate, string endDate, CancellationToken cancellationToken)
         {
-            var bytes = await _exportData.ExportDataToCSVAsync(startDate, endDate, cancellationToken);
+            var bytes = await _exportData.ExportOrassDataAsExcel(startDate, endDate, cancellationToken);
 
             return File(bytes, "application/vnd.ms-excel", "Orass_Data.xlsx");
         }
